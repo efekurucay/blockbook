@@ -46,9 +46,7 @@ final class LockController {
         guard overlayWindows.isEmpty, eventTap == nil else { return }
 
         createOverlayWindows()
-        refreshStoredPreviewImage()
         try installEventTap()
-        schedulePreviewRevealTimer()
         hideCursorIfNeeded()
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -87,7 +85,7 @@ final class LockController {
             )
 
             window.level = .screenSaver
-            window.backgroundColor = NSColor.black.withAlphaComponent(0.001)
+            window.backgroundColor = NSColor.clear
             window.isOpaque = false
             window.hasShadow = false
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
@@ -161,19 +159,6 @@ final class LockController {
                 return nil
             }
 
-            if configuration.changeImageShortcut.matches(keyCode: keyCode, modifierFlags: flags) {
-                modalState = .imagePicker
-                DispatchQueue.main.async { [weak self] in
-                    self?.showImagePicker()
-                }
-                return nil
-            }
-        }
-
-        if shouldRevealPreview(for: type) {
-            DispatchQueue.main.async { [weak self] in
-                self?.revealPreviewIfNeeded()
-            }
         }
 
         return nil
@@ -307,9 +292,8 @@ final class LockController {
     }
 
     private func refreshStoredPreviewImage() {
-        let image = imageStore?.loadImage()
-        previewImageAvailable = image != nil
-        overlayViews.forEach { $0.setPreviewImage(image) }
+        previewImageAvailable = false
+        overlayViews.forEach { $0.setPreviewImage(nil) }
     }
 
     private func schedulePreviewRevealTimer() {
