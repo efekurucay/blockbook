@@ -37,6 +37,7 @@ final class LockController {
     private var previewVisible = false
     private var modalState: ModalState = .none
     private var cursorHidden = false
+    private var savedBrightness: [CGDirectDisplayID: Float] = [:]
 
     init(configuration: LockConfiguration) {
         self.configuration = configuration
@@ -49,6 +50,8 @@ final class LockController {
         createOverlayWindows()
         try installEventTap()
         hideCursorIfNeeded()
+        savedBrightness = BrightnessControl.snapshot()
+        BrightnessControl.setBrightness(0)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -71,6 +74,9 @@ final class LockController {
 
         overlayWindows.forEach { $0.close() }
         overlayWindows.removeAll()
+
+        BrightnessControl.restore(savedBrightness)
+        savedBrightness = [:]
 
         unhideCursorIfNeeded()
     }
@@ -146,6 +152,20 @@ final class LockController {
 
         if modalState != .none {
             return Unmanaged.passRetained(event)
+        }
+
+        // NSSystemDefined (raw 14): let the brightness keys through so the user
+        // can still adjust brightness while locked; block volume/media/others.
+        if type.rawValue == 14 {
+            if let systemEvent = NSEvent(cgEvent: event), systemEvent.subtype.rawValue == 8 {
+                let keyCode = (systemEvent.data1 & 0xFFFF0000) >> 16
+                let brightnessUp = 2
+                let brightnessDown = 3
+                if keyCode == brightnessUp || keyCode == brightnessDown {
+                    return Unmanaged.passRetained(event)
+                }
+            }
+            return nil
         }
 
         if type == .keyDown {
