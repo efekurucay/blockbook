@@ -178,12 +178,19 @@ final class LockController {
             return
         }
 
+        // The overlay windows sit at .screenSaver level and would hide the
+        // system Touch ID dialog. Drop them while authenticating; input stays
+        // blocked by the event tap regardless of window level.
+        setOverlayWindowsLevel(.normal)
+        NSApp.activate(ignoringOtherApps: true)
+
         context.evaluatePolicy(
             .deviceOwnerAuthentication,
             localizedReason: configuration.biometricReason
         ) { [weak self] success, _ in
             DispatchQueue.main.async {
                 guard let self else { return }
+                self.setOverlayWindowsLevel(.screenSaver)
                 guard self.modalState == .unlockPrompt else { return }
 
                 if success {
@@ -367,6 +374,10 @@ final class LockController {
 
     private var overlayViews: [LockOverlayView] {
         overlayWindows.compactMap { $0.contentView as? LockOverlayView }
+    }
+
+    private func setOverlayWindowsLevel(_ level: NSWindow.Level) {
+        overlayWindows.forEach { $0.level = level }
     }
 
     private func hideCursorIfNeeded() {
