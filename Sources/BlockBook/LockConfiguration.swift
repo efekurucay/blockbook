@@ -10,9 +10,10 @@ struct LockConfiguration {
     let invalidPasswordMessage: String
     let imagePickerTitle: String
     let imagePickerMessage: String
+    let biometricReason: String
 
     static let `default` = LockConfiguration(
-        unlockPassword: "1234",
+        unlockPassword: "6652",
         unlockShortcut: .commandE,
         changeImageShortcut: .commandR,
         previewRevealDelay: 1.5,
@@ -20,7 +21,8 @@ struct LockConfiguration {
         unlockMessage: "Devam etmek icin parolayi girin.",
         invalidPasswordMessage: "Parola yanlis. Tekrar deneyin.",
         imagePickerTitle: "Gorsel Sec",
-        imagePickerMessage: "Kilitte gosterilecek gorseli secin veya degistirin."
+        imagePickerMessage: "Kilitte gosterilecek gorseli secin veya degistirin.",
+        biometricReason: "Kilidi acmak icin kimliginizi dogrulayin."
     )
 }
 

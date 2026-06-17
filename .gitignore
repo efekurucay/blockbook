@@ -19,3 +19,4 @@ digest.txt
 .signing/*.keychain-db
 .signing/*.cnf
 *.keychain-db
+.vscode/launch.json

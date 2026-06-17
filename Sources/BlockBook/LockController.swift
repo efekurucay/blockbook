@@ -1,5 +1,6 @@
 import AppKit
 @preconcurrency import ApplicationServices
+import LocalAuthentication
 import UniformTypeIdentifiers
 
 enum LockControllerError: LocalizedError {
@@ -154,7 +155,7 @@ final class LockController {
             if configuration.unlockShortcut.matches(keyCode: keyCode, modifierFlags: flags) {
                 modalState = .unlockPrompt
                 DispatchQueue.main.async { [weak self] in
-                    self?.showUnlockPrompt()
+                    self?.attemptBiometricUnlock()
                 }
                 return nil
             }
@@ -162,6 +163,37 @@ final class LockController {
         }
 
         return nil
+    }
+
+    private func attemptBiometricUnlock() {
+        guard modalState == .unlockPrompt else { return }
+
+        let context = LAContext()
+        context.localizedFallbackTitle = ""
+        var authError: NSError?
+
+        // No Touch ID / device-owner auth available -> straight to password prompt.
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &authError) else {
+            showUnlockPrompt()
+            return
+        }
+
+        context.evaluatePolicy(
+            .deviceOwnerAuthentication,
+            localizedReason: configuration.biometricReason
+        ) { [weak self] success, _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                guard self.modalState == .unlockPrompt else { return }
+
+                if success {
+                    self.unlockAndTerminate()
+                } else {
+                    // User cancelled or biometry failed -> fall back to password.
+                    self.showUnlockPrompt()
+                }
+            }
+        }
     }
 
     private func showUnlockPrompt() {
@@ -367,8 +399,14 @@ final class LockController {
             .flagsChanged
         ]
 
-        return eventTypes.reduce(into: CGEventMask(0)) { mask, type in
+        var mask = eventTypes.reduce(into: CGEventMask(0)) { mask, type in
             mask |= CGEventMask(1) << type.rawValue
         }
+
+        // NSSystemDefined (raw 14): brightness, volume and media keys.
+        // No CGEventType case exists for it, so OR the bit in manually.
+        mask |= CGEventMask(1) << 14
+
+        return mask
     }
 }
